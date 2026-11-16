@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments :: head('用户同意')}"></head>
+<body>
+<header th:replace="~{fragments :: topbar('subjects')}"></header>
+<div th:replace="~{fragments :: flash}"></div>
+
+<main class="page">
+    <div class="page-head">
+        <div>
+            <h1>用户同意查询</h1>
+            <div class="sub">输入业务系统的用户 ID，查看各用途当前状态、完整事件历史与凭证校验结果。</div>
+        </div>
+    </div>
+
+    <form class="card tight" method="get" th:action="@{/admin/subjects}" style="margin-bottom:16px;">
+        <div class="searchbar">
+            <input type="text" name="q" th:value="${q}" placeholder="例如 U100001" autofocus>
+            <button class="btn primary" type="submit">查询</button>
+        </div>
+    </form>
+
+    <div class="card" th:if="${subject}">
+        <div class="card-head">
+            <div>
+                <h2 style="margin-bottom:2px;" th:text="${subject.externalId}">U100001</h2>
+                <div class="sub" th:text="${subject.displayName} ?: '（未记录展示名）'">用户</div>
+            </div>
+            <a class="btn primary" th:href="@{/admin/subjects/{id}(id=${subject.externalId})}">查看完整档案 →</a>
+        </div>
+    </div>
+
+    <div class="card tight" th:if="${audits != null and !#lists.isEmpty(audits)}">
+        <h2>最近管理操作</h2>
+        <table>
+            <thead><tr><th>时间</th><th>操作人</th><th>动作</th><th>对象</th><th>详情</th></tr></thead>
+            <tbody>
+            <tr th:each="a : ${audits}">
+                <td class="muted" th:text="${#temporals.format(a.occurredAt, 'MM-dd HH:mm:ss')}">-</td>
+                <td th:text="${a.actor}">admin</td>
+                <td><span class="badge neutral" th:text="${a.action}">ACTION</span></td>
+                <td class="mono" th:text="${a.targetId}">-</td>
+                <td class="muted" th:text="${a.detail}">-</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+</body>
+</html>

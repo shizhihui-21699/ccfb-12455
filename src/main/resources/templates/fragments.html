@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' · 同意管理平台'">同意管理平台</title>
+    <link rel="stylesheet" th:href="@{/admin/app.css}">
+</head>
+<body>
+<header th:fragment="topbar(active)" class="topbar">
+    <div class="brand">
+        <span class="logo">◎</span>
+        <div>
+            <div class="brand-name">同意管理平台</div>
+            <div class="brand-sub">Consent Ledger</div>
+        </div>
+    </div>
+    <nav>
+        <a th:href="@{/admin}" th:classappend="${active=='dashboard'} ? 'on'">总览</a>
+        <a th:href="@{/admin/policies}" th:classappend="${active=='policies'} ? 'on'">政策版本</a>
+        <a th:href="@{/admin/subjects}" th:classappend="${active=='subjects'} ? 'on'">用户同意</a>
+        <a th:href="@{/admin/history}" th:classappend="${active=='history'} ? 'on'">事件账本</a>
+        <a th:href="@{/admin/audit}" th:classappend="${active=='audit'} ? 'on'">操作审计</a>
+    </nav>
+    <form th:action="@{/logout}" method="post" class="logout">
+        <span class="user" th:text="${currentAdmin}">admin</span>
+        <button type="submit">退出</button>
+    </form>
+</header>
+
+<div th:fragment="flash" class="flash-wrap">
+    <div class="flash ok" th:if="${message}" th:text="${message}"></div>
+    <div class="flash bad" th:if="${error}" th:text="${error}"></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments :: head('政策版本')}"></head>
+<body>
+<header th:replace="~{fragments :: topbar('policies')}"></header>
+<div th:replace="~{fragments :: flash}"></div>
+
+<main class="page">
+    <div class="page-head">
+        <div>
+            <h1>政策与版本</h1>
+            <div class="sub">每个版本一经发布即不可变；修改必须产生新版本，历史同意始终指向原版本。</div>
+        </div>
+    </div>
+
+    <div th:each="row : ${rows}" class="card" style="margin-bottom:16px;">
+        <div class="card-head">
+            <div>
+                <h2 style="margin-bottom:2px;" th:text="${row.policy.name}">隐私政策</h2>
+                <div class="mono muted" th:text="${row.policy.code} + ' · 控制者 ' + ${row.policy.controllerName}">code</div>
+            </div>
+            <div>
+                <span class="badge ok" th:if="${row.active != null}"
+                      th:text="'当前生效 ' + ${row.active.versionLabel}">生效</span>
+                <span class="badge bad" th:if="${row.active == null}">无生效版本</span>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th>版本</th>
+                <th>状态</th>
+                <th>生效时间</th>
+                <th>用途数</th>
+                <th>实质性变更</th>
+                <th>内容哈希</th>
+                <th>变更说明</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="v : ${row.versions}">
+                <td><a th:href="@{/admin/policies/view/{id}(id=${v.id})}" th:text="${v.versionLabel}">v1.0</a></td>
+                <td>
+                    <span class="badge ok" th:if="${v.status.name() == 'ACTIVE'}">生效中</span>
+                    <span class="badge neutral" th:if="${v.status.name() == 'SUPERSEDED'}">已被取代</span>
+                    <span class="badge info" th:if="${v.status.name() == 'DRAFT'}">草稿</span>
+                    <span class="badge bad" th:if="${v.status.name() == 'RETIRED'}">已退役</span>
+                </td>
+                <td th:text="${#temporals.format(v.effectiveFrom, 'yyyy-MM-dd')}">2026-01-01</td>
+                <td class="num" th:text="${#lists.size(v.purposes)}">0</td>
+                <td>
+                    <span class="badge warn" th:if="${v.reconsentRequired}">需重新同意</span>
+                    <span class="muted" th:unless="${v.reconsentRequired}">否</span>
+                </td>
+                <td class="mono muted" th:text="${#strings.substring(v.contentHash, 0, 12)} + '…'">hash</td>
+                <td class="muted" style="max-width:260px;" th:text="${v.changeNote}">-</td>
+                <td style="white-space:nowrap;">
+                    <a class="btn small" th:href="@{/admin/policies/view/{id}(id=${v.id})}">查看</a>
+                    <a class="btn small" th:if="${v.status.name() != 'DRAFT'}"
+                       th:href="@{/admin/policies/{pid}/new-version(pid=${row.policy.id}, from=${v.id})}">据此起草</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+</body>
+</html>

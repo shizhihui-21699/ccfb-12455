@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments :: head('事件账本')}"></head>
+<body>
+<header th:replace="~{fragments :: topbar('history')}"></header>
+<div th:replace="~{fragments :: flash}"></div>
+
+<main class="page">
+    <div class="page-head">
+        <div>
+            <h1>事件账本</h1>
+            <div class="sub">全部同意与撤回事件，只追加不可修改。共 <strong th:text="${totalElements}">0</strong> 条。</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+            <tr>
+                <th>发生时间</th><th>主体</th><th>动作</th><th>用途</th>
+                <th>政策版本</th><th>渠道</th><th>操作者</th><th>接入方</th><th>事件 ID</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="e : ${events}">
+                <td class="muted" style="white-space:nowrap;"
+                    th:text="${#temporals.format(e.occurredAt, 'yyyy-MM-dd HH:mm:ss')}">-</td>
+                <td><a th:href="@{/admin/subjects/{id}(id=${e.subjectExternalId})}"
+                       th:text="${e.subjectExternalId}">U100001</a></td>
+                <td>
+                    <span class="badge ok" th:if="${e.action.name() == 'GRANT'}">同意</span>
+                    <span class="badge bad" th:if="${e.action.name() == 'WITHDRAW'}">撤回</span>
+                </td>
+                <td>
+                    <div th:text="${e.purposeName}">用途</div>
+                    <div class="mono muted" th:text="${e.purposeCode}">code</div>
+                </td>
+                <td>
+                    <span class="mono" th:text="${e.policyVersionLabel}">v2.0</span>
+                    <div class="mono muted" style="font-size:10.5px;"
+                         th:text="${#strings.substring(e.policyContentHash, 0, 10)} + '…'">hash</div>
+                </td>
+                <td><span class="badge neutral" th:text="${e.channel}">WEB</span></td>
+                <td class="muted" th:text="${e.actor}">user</td>
+                <td class="muted" th:text="${e.clientName} ?: '—'">—</td>
+                <td class="mono muted" style="font-size:10.5px;"
+                    th:text="${#strings.substring(e.eventUid, 0, 8)} + '…'">uuid</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;">
+        <a class="btn" th:href="@{/admin/history(page=${page - 1})}" th:if="${page > 0}">← 上一页</a>
+        <span class="muted" style="align-self:center;"
+              th:text="${'第 ' + (page + 1) + ' / ' + (totalPages == 0 ? 1 : totalPages) + ' 页'}">1 / 1</span>
+        <a class="btn" th:href="@{/admin/history(page=${page + 1})}" th:if="${page + 1 < totalPages}">下一页 →</a>
+    </div>
+</main>
+</body>
+</html>

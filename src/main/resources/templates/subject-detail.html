@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments :: head('用户档案')}"></head>
+<body>
+<header th:replace="~{fragments :: topbar('subjects')}"></header>
+<div th:replace="~{fragments :: flash}"></div>
+
+<main class="page">
+    <div class="page-head">
+        <div>
+            <h1 th:text="${subject.externalId}">U100001</h1>
+            <div class="sub">
+                <span th:text="${subject.displayName} ?: '（未记录展示名）'">用户</span> ·
+                <span th:text="${subject.sourceSystem} ?: '未知来源'">demo-shop</span> ·
+                建档 <span th:text="${#temporals.format(subject.createdAt, 'yyyy-MM-dd HH:mm')}">-</span>
+            </div>
+        </div>
+        <a class="btn" href="/admin/subjects">← 返回查询</a>
+    </div>
+
+    <div class="grid cols-4" style="margin-bottom:16px;">
+        <div class="card tight">
+            <div class="metric-label">事件总数</div>
+            <div class="metric-value" th:text="${eventCount}">0</div>
+            <div class="metric-foot">只追加的同意与撤回记录</div>
+        </div>
+        <div class="card tight">
+            <div class="metric-label">哈希链</div>
+            <div class="metric-value" style="font-size:19px;">
+                <span class="badge ok" th:if="${verification.chainValid}">校验通过</span>
+                <span class="badge bad" th:unless="${verification.chainValid}">校验失败</span>
+            </div>
+            <div class="metric-foot" th:text="${'已校验 ' + verification.eventsVerified + ' 条记录'}">-</div>
+        </div>
+        <div class="card tight">
+            <div class="metric-label">当前可被使用</div>
+            <div class="metric-value" th:text="${usableCount}">0</div>
+            <div class="metric-foot">按当前生效政策判定</div>
+        </div>
+        <div class="card tight">
+            <div class="metric-label">链头哈希</div>
+            <div class="mono" style="font-size:11px;word-break:break-all;margin-top:8px;"
+                 th:text="${chain != null} ? ${#strings.substring(chain.lastHash,0,32)} + '…' : '—'">-</div>
+        </div>
+    </div>
+
+    <div class="split">
+        <div class="grid">
+            <section class="card">
+                <div class="card-head">
+                    <h2>各用途当前状态</h2>
+                    <span class="sub">按当前生效政策判定是否可用</span>
+                </div>
+                <table>
+                    <thead>
+                    <tr><th>用途</th><th>状态</th><th>依据版本</th><th>可用性</th><th>操作</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="row : ${rows}">
+                        <td>
+                            <div th:text="${row.purpose.name}">用途</div>
+                            <div class="mono muted" th:text="${row.purpose.code}">code</div>
+                        </td>
+                        <td>
+                            <span class="badge ok" th:if="${row.state != null and row.state.status.name() == 'GRANTED'}">已同意</span>
+                            <span class="badge bad" th:if="${row.state != null and row.state.status.name() == 'WITHDRAWN'}">已撤回</span>
+                            <span class="badge neutral" th:if="${row.state == null}">无记录</span>
+                            <div class="muted" style="font-size:11.5px;"
+                                 th:if="${row.state != null}"
+                                 th:text="${row.state.status.name() == 'GRANTED' ? '同意于 ' : '撤回于 '}
+                                         + ${#temporals.format(row.state.status.name() == 'GRANTED' ? row.state.grantedAt : row.state.withdrawnAt, 'MM-dd HH:mm')}">-</div>
+                        </td>
+                        <td>
+                            <span class="mono" th:if="${row.state != null}" th:text="${row.state.policyVersionLabel}">v2.0</span>
+                            <span class="muted" th:if="${row.state == null}">—</span>
+                            <div class="badge warn" th:if="${row.staleVersion}"
+                                 th:text="${'当前为 ' + row.purpose.policyVersionLabel}">旧版</div>
+                        </td>
+                        <td>
+                            <span class="badge ok" th:if="${row.usable}">可用</span>
+                            <span class="badge bad" th:unless="${row.usable}">不可用</span>
+                            <div class="badge warn" th:if="${row.staleVersion and row.purpose.reconsentRequired}">需重新同意</div>
+                        </td>
+                        <td style="white-space:nowrap;">
+                            <th:block th:if="${row.consentBased}">
+                                <form class="inline" th:action="@{/admin/subjects/{id}/consents(id=${subject.externalId})}"
+                                      method="post">
+                                    <input type="hidden" name="purposeCode" th:value="${row.purpose.code}">
+                                    <input type="hidden" name="action" value="GRANT">
+                                    <button class="btn small" type="submit">代客同意</button>
+                                </form>
+                                <form class="inline" th:action="@{/admin/subjects/{id}/consents(id=${subject.externalId})}"
+                                      method="post">
+                                    <input type="hidden" name="purposeCode" th:value="${row.purpose.code}">
+                                    <input type="hidden" name="action" value="WITHDRAW">
+                                    <button class="btn small danger" type="submit">代客撤回</button>
+                                </form>
+                            </th:block>
+                            <span class="muted" style="font-size:12px;" th:unless="${row.consentBased}"
+                                  th:text="'依 ' + ${#strings.replace(row.purpose.legalBasis.toString(), '_', ' ')} + ' 处理，无需同意'">—</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                    <tr th:each="row : ${retiredRows}">
+                        <td>
+                            <div th:text="${row.state.purposeCode}">code</div>
+                            <span class="badge bad">已从政策移除</span>
+                        </td>
+                        <td>
+                            <span class="badge ok" th:if="${row.state.status.name() == 'GRANTED'}">曾同意</span>
+                            <span class="badge bad" th:if="${row.state.status.name() == 'WITHDRAWN'}">曾撤回</span>
+                        </td>
+                        <td><span class="mono" th:text="${row.state.policyVersionLabel}">v2.0</span></td>
+                        <td><span class="badge bad">不可用</span></td>
+                        <td class="muted" style="font-size:12px;">该用途已不在生效政策中，不再接受同意或撤回；历史记录保留在账本与凭证中。</td>
+                    </tr>
+                </table>
+                <div class="notice" style="margin-top:12px;">
+                    管理端代客操作同样写入完整事件（渠道 <code>ADMIN</code>、操作人工号），
+                    与用户自助操作同等效力、同等留痕。
+                </div>
+            </section>
+
+            <section class="card">
+                <h2>完整事件历史（新 → 旧）</h2>
+                <table>
+                    <thead>
+                    <tr><th>时间</th><th>动作</th><th>用途</th><th>政策版本</th><th>渠道</th>
+                        <th>事件 ID</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="e : ${events}">
+                        <td class="muted" style="white-space:nowrap;"
+                            th:text="${#temporals.format(e.occurredAt, 'yyyy-MM-dd HH:mm:ss')}">-</td>
+                        <td>
+                            <span class="badge ok" th:if="${e.action.name() == 'GRANT'}">同意</span>
+                            <span class="badge bad" th:if="${e.action.name() == 'WITHDRAW'}">撤回</span>
+                        </td>
+                        <td th:text="${e.purposeName}">用途</td>
+                        <td>
+                            <span class="mono" th:text="${e.policyVersionLabel}">v2.0</span>
+                            <div class="mono muted" style="font-size:10.5px;"
+                                 th:text="${#strings.substring(e.policyContentHash, 0, 10)} + '…'">hash</div>
+                        </td>
+                        <td><span class="badge neutral" th:text="${e.channel}">WEB</span></td>
+                        <td class="mono muted" style="font-size:10.5px;"
+                            th:text="${#strings.substring(e.eventUid, 0, 8)} + '…'">uuid</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+
+        <div class="grid">
+            <section class="card tight">
+                <h2>凭证导出</h2>
+                <p class="sub" style="margin-top:0;">下载包含全部事件、政策版本、内容哈希、链校验结果与
+                    HMAC 签名的完整凭证，可直接提交监管。</p>
+                <a class="btn primary" style="display:block;text-align:center;"
+                   th:href="@{/admin/subjects/{id}/receipt.json(id=${subject.externalId})}">下载 JSON 凭证</a>
+                <div class="notice" style="margin-top:12px;">
+                    该链接由业务系统 API 提供，需带 <code>X-API-Key</code>。
+                    管理页面内可复制下面的 cURL 命令在服务器执行。
+                </div>
+                <details style="margin-top:10px;">
+                    <summary>查看 cURL</summary>
+                    <pre style="background:#0f1319;color:#cdd6e4;padding:12px;border-radius:8px;overflow:auto;font-size:11.5px;"
+                         th:text="'curl -H \'X-API-Key: $CONSENT_API_KEY\' \\' + '\n' + '  ' + ${#strings.replace('http://localhost:8080/api/v1/subjects/X/receipt', 'X', subject.externalId)}"></pre>
+                </details>
+            </section>
+
+            <section class="card tight">
+                <h2>链校验结果</h2>
+                <dl class="kv">
+                    <dt>链完整性</dt>
+                    <dd><span class="badge ok" th:if="${verification.chainValid}">通过</span>
+                        <span class="badge bad" th:unless="${verification.chainValid}">不通过</span></dd>
+                    <dt>校验条数</dt><dd th:text="${verification.eventsVerified}">0</dd>
+                    <dt>链头一致</dt>
+                    <dd th:text="${verification.headMatchesLatestEvent != null and verification.headMatchesLatestEvent} ? '是' : '—'">是</dd>
+                    <dt>算法</dt><dd th:text="${verification.algorithm}">HmacSHA256</dd>
+                </dl>
+                <div class="notice" style="margin-top:10px;" th:if="${!#lists.isEmpty(verification.failures)}">
+                    发现 <strong th:text="${#lists.size(verification.failures)}">0</strong> 处校验失败：
+                    <div class="mono" style="font-size:11px;margin-top:6px;"
+                         th:each="f : ${verification.failures}" th:text="${f}"></div>
+                </div>
+                <div class="notice" style="margin-top:10px;" th:if="${verification.chainValid}">
+                    每条记录的 <code>recordHash</code> 与 <code>prevHash</code> 构成链；
+                    任何字段被改写或记录被删除都会导致校验失败。
+                </div>
+            </section>
+        </div>
+    </div>
+</main>
+</body>
+</html>

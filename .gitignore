@@ -16,3 +16,12 @@ node_modules/
 __pycache__/
 .venv/
 venv/
+
+# 运行时数据与构建产物
+data/
+target/
+*.mv.db
+*.trace.db
+.idea/
+*.iml
+.DS_Store

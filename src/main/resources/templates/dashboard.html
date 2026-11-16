@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments :: head('总览')}"></head>
+<body>
+<header th:replace="~{fragments :: topbar('dashboard')}"></header>
+<div th:replace="~{fragments :: flash}"></div>
+
+<main class="page">
+    <div class="page-head">
+        <div>
+            <h1>总览</h1>
+            <div class="sub">当前生效政策 <strong th:text="${activeVersions}">0</strong> 个版本 ·
+                决策目录构建于 <span th:text="${#temporals.format(snapshot.builtAt, 'yyyy-MM-dd HH:mm:ss')}">-</span>
+                （rev <span th:text="${snapshot.dbRevision}">0</span>）</div>
+        </div>
+        <a class="btn" th:href="@{/admin/policies}">管理政策版本 →</a>
+    </div>
+
+    <div class="grid cols-4" style="margin-bottom:16px;">
+        <div class="card tight">
+            <div class="metric-label">同意用户数</div>
+            <div class="metric-value" th:text="${subjects}">0</div>
+            <div class="metric-foot">已建档主体</div>
+        </div>
+        <div class="card tight">
+            <div class="metric-label">有效同意（用途×人）</div>
+            <div class="metric-value" th:text="${granted}">0</div>
+            <div class="metric-foot">当前可被业务使用的授权</div>
+        </div>
+        <div class="card tight">
+            <div class="metric-label">已撤回</div>
+            <div class="metric-value" th:text="${withdrawn}">0</div>
+            <div class="metric-foot">撤回即时阻断数据使用</div>
+        </div>
+        <div class="card tight">
+            <div class="metric-label">账本事件总数</div>
+            <div class="metric-value" th:text="${events}">0</div>
+            <div class="metric-foot">只追加，不可修改</div>
+        </div>
+    </div>
+
+    <div class="split">
+        <section class="card">
+            <div class="card-head">
+                <h2>各用途同意情况</h2>
+                <span class="sub">按当前生效政策版本统计</span>
+            </div>
+            <table>
+                <thead>
+                <tr>
+                    <th>用途</th>
+                    <th>依据</th>
+                    <th class="num">已同意</th>
+                    <th class="num">已撤回</th>
+                    <th style="width:150px;">同意率</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="p : ${purposeStats}">
+                    <td>
+                        <div th:text="${p.name}">用途</div>
+                        <div class="mono muted" th:text="${p.code}">code</div>
+                    </td>
+                    <td>
+                        <span class="badge" th:classappend="${p.legalBasis == 'CONSENT'} ? 'info' : 'neutral'"
+                              th:text="${p.legalBasis}">CONSENT</span>
+                        <span class="badge warn" th:if="${p.sensitive}">敏感</span>
+                    </td>
+                    <td class="num" th:text="${p.granted}">0</td>
+                    <td class="num" th:text="${p.withdrawn}">0</td>
+                    <td>
+                        <div class="bar"><span th:style="'width:' + ${p.grantRate} + '%'"></span></div>
+                        <div class="muted" style="font-size:11.5px;" th:text="${p.grantRate} + '%'">0%</div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <div class="grid">
+            <section class="card tight">
+                <div class="card-head"><h2 style="margin:0;">决策缓存</h2>
+                    <span class="badge ok">运行中</span>
+                </div>
+                <dl class="kv">
+                    <dt>命中率</dt><dd th:text="${cacheStats.hitRate}">0</dd>
+                    <dt>缓存条目</dt><dd th:text="${cacheStats.size}">0</dd>
+                    <dt>数据库加载</dt><dd th:text="${cacheStats.dbLoads}">0</dd>
+                    <dt>精确失效</dt><dd th:text="${cacheStats.preciseInvalidations}">0</dd>
+                    <dt>保底 TTL</dt><dd th:text="${cacheStats.ttlSeconds} + ' 秒'">60</dd>
+                    <dt>全局修订号</dt><dd th:text="${cacheStats.revision}">0</dd>
+                </dl>
+                <div class="notice" style="margin-top:12px;">
+                    撤回在<strong>本节点立即生效</strong>；跨节点依赖 250ms 修订号轮询。
+                </div>
+            </section>
+
+            <section class="card tight">
+                <div class="card-head"><h2 style="margin:0;">最近事件</h2>
+                    <a th:href="@{/admin/history}" style="font-size:12.5px;">全部 →</a></div>
+                <ul class="timeline">
+                    <li th:each="e : ${recentEvents}"
+                        th:classappend="${e.action.name() == 'GRANT'} ? 'grant' : 'withdraw'">
+                        <div>
+                            <a th:href="@{/admin/subjects/{id}(id=${e.subjectExternalId})}"
+                               th:text="${e.subjectExternalId}">U100001</a>
+                            <span th:text="${e.action.name() == 'GRANT'} ? '同意了' : '撤回了'">同意</span>
+                            <strong th:text="${e.purposeName}">用途</strong>
+                        </div>
+                        <div class="muted" style="font-size:11.5px;">
+                            <span th:text="${e.policyCode} + ' ' + ${e.policyVersionLabel}">v</span> ·
+                            <span th:text="${e.channel}">WEB</span> ·
+                            <span th:text="${#temporals.format(e.occurredAt, 'MM-dd HH:mm')}">-</span>
+                        </div>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </div>
+</main>
+</body>
+</html>

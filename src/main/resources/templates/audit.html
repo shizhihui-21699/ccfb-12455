@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments :: head('操作审计')}"></head>
+<body>
+<header th:replace="~{fragments :: topbar('audit')}"></header>
+<div th:replace="~{fragments :: flash}"></div>
+
+<main class="page">
+    <div class="page-head">
+        <div>
+            <h1>操作审计</h1>
+            <div class="sub">政策发布、版本起草、代客操作等管理动作的完整记录。</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <table>
+            <thead>
+            <tr><th>时间</th><th>操作人</th><th>动作</th><th>对象类型</th><th>对象</th><th>详情</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="l : ${logs}">
+                <td class="muted" style="white-space:nowrap;"
+                    th:text="${#temporals.format(l.occurredAt, 'yyyy-MM-dd HH:mm:ss')}">-</td>
+                <td th:text="${l.actor}">admin</td>
+                <td><span class="badge info" th:text="${l.action}">ACTION</span></td>
+                <td class="muted" th:text="${l.targetType}">-</td>
+                <td class="mono" th:text="${l.targetId}">-</td>
+                <td class="muted" th:text="${l.detail}">-</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(logs)}">
+                <td colspan="6" class="muted" style="text-align:center;padding:26px;">暂无记录</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;">
+        <a class="btn" th:href="@{/admin/audit(page=${page - 1})}" th:if="${page > 0}">← 上一页</a>
+        <span class="muted" style="align-self:center;"
+              th:text="${'第 ' + (page + 1) + ' / ' + (totalPages == 0 ? 1 : totalPages) + ' 页'}">1 / 1</span>
+        <a class="btn" th:href="@{/admin/audit(page=${page + 1})}" th:if="${page + 1 < totalPages}">下一页 →</a>
+    </div>
+</main>
+</body>
+</html>

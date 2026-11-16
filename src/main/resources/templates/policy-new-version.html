@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments :: head('起草新版本')}"></head>
+<body>
+<header th:replace="~{fragments :: topbar('policies')}"></header>
+<div th:replace="~{fragments :: flash}"></div>
+
+<main class="page">
+    <div class="page-head">
+        <div>
+            <h1>起草新版本</h1>
+            <div class="sub" th:text="${policy.name} + '（' + ${policy.code} + '）'">隐私政策</div>
+        </div>
+        <a class="btn" th:href="@{/admin/policies}">← 返回</a>
+    </div>
+
+    <form th:action="@{/admin/policies/{id}/versions(id=${policy.id})}" method="post">
+        <section class="card" style="margin-bottom:16px;">
+            <h2>版本信息</h2>
+            <div class="grid cols-3">
+                <label class="field"><span>版本号 *</span>
+                    <input type="text" name="versionLabel" th:value="${suggestedLabel}" required></label>
+                <label class="field"><span>变更说明</span>
+                    <input type="text" name="changeNote" placeholder="本次修改了什么"></label>
+                <label class="field"><span>是否实质性变更</span>
+                    <select name="reconsentRequired">
+                        <option value="false">否 —— 沿用已有同意</option>
+                        <option value="true">是 —— 旧同意失效，用户需重新同意</option>
+                    </select></label>
+            </div>
+            <label class="field"><span>政策全文（文本/Markdown，参与计算版本内容哈希）</span>
+                <textarea name="documentText" th:text="${source != null ? source.documentText : ''}"></textarea></label>
+            <label class="field"><span>政策原文链接（可选）</span>
+                <input type="url" name="documentUrl" th:value="${source != null ? source.documentUrl : ''}"></label>
+        </section>
+
+        <section class="card" style="margin-bottom:16px;">
+            <div class="card-head">
+                <h2 style="margin:0;">本版用途定义</h2>
+                <button class="btn small" type="button" onclick="addRow()">＋ 增加用途</button>
+            </div>
+            <p class="muted" style="font-size:12.5px;margin-top:0;">
+                用途编码跨版本保持稳定（如 <code>marketing_email</code>）；删除某用途或将「需勾选」改为否，
+                都会反映在版本内容哈希中。</p>
+            <table id="purposeTable">
+                <thead>
+                <tr>
+                    <th style="width:160px;">编码</th>
+                    <th style="width:160px;">名称</th>
+                    <th>说明</th>
+                    <th style="width:130px;">合法性基础</th>
+                    <th style="width:110px;">同意模式</th>
+                    <th style="width:90px;">留存(月)</th>
+                    <th style="width:170px;">第三方</th>
+                    <th style="width:36px;"></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="p : ${purposes}">
+                    <td><input type="text" name="purposeCode" th:value="${p.code}"></td>
+                    <td><input type="text" name="purposeName" th:value="${p.name}"></td>
+                    <td><input type="text" name="purposeDescription" th:value="${p.description}"></td>
+                    <td>
+                        <select name="purposeBasis">
+                            <option value="CONSENT" th:selected="${p.legalBasis.name() == 'CONSENT'}">用户同意</option>
+                            <option value="CONTRACT" th:selected="${p.legalBasis.name() == 'CONTRACT'}">履行合同</option>
+                            <option value="LEGAL_OBLIGATION" th:selected="${p.legalBasis.name() == 'LEGAL_OBLIGATION'}">法定义务</option>
+                            <option value="PUBLIC_INTEREST" th:selected="${p.legalBasis.name() == 'PUBLIC_INTEREST'}">公共利益</option>
+                            <option value="OTHER_LEGAL" th:selected="${p.legalBasis.name() == 'OTHER_LEGAL'}">其他法定</option>
+                        </select>
+                    </td>
+                    <td>
+                        <select name="purposeConsentModel">
+                            <option value="OPT_IN" th:selected="${p.optIn()}">需用户勾选</option>
+                            <option value="OPT_OUT" th:selected="${!p.optIn()}">默认允许</option>
+                        </select>
+                    </td>
+                    <td><input type="number" name="purposeRetention" th:value="${p.retentionMonths}"></td>
+                    <td><input type="text" name="purposeThirdParties" th:value="${p.thirdParties}"></td>
+                    <td><button class="btn small danger" type="button"
+                                onclick="this.closest('tr').remove()">×</button></td>
+                </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <div class="notice" style="margin-bottom:16px;">
+            保存后为<strong>草稿</strong>，不会影响线上决策。进入版本详情页确认后点击「发布」才会生效；
+            发布时若勾选了实质性变更，旧版本上取得的同意将被判定为需重新同意。
+        </div>
+        <button class="btn primary" type="submit">保存为草稿</button>
+    </form>
+</main>
+
+<script>
+function addRow() {
+    const tbody = document.querySelector('#purposeTable tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" name="purposeCode" placeholder="new_purpose"></td>
+        <td><input type="text" name="purposeName"></td>
+        <td><input type="text" name="purposeDescription"></td>
+        <td><select name="purposeBasis">
+            <option value="CONSENT">用户同意</option>
+            <option value="CONTRACT">履行合同</option>
+            <option value="LEGAL_OBLIGATION">法定义务</option>
+            <option value="PUBLIC_INTEREST">公共利益</option>
+            <option value="OTHER_LEGAL">其他法定</option>
+        </select></td>
+        <td><select name="purposeConsentModel">
+            <option value="OPT_IN">需用户勾选</option>
+            <option value="OPT_OUT">默认允许</option>
+        </select></td>
+        <td><input type="number" name="purposeRetention"></td>
+        <td><input type="text" name="purposeThirdParties"></td>
+        <td><button class="btn small danger" type="button" onclick="this.closest('tr').remove()">×</button></td>`;
+    tbody.appendChild(tr);
+}
+</script>
+</body>
+</html>

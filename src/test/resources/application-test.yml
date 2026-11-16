@@ -1,0 +1,42 @@
+server:
+  port: 0
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:consent-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        jdbc.batch_size: 20
+  thymeleaf:
+    cache: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+consent:
+  decision-cache-ttl: 30s
+  revision-poll-interval: 100ms
+  receipt-signing-secret: test-secret-do-not-use-in-production
+  demo-data:
+    enabled: true
+    subjects: 40
+  admin:
+    bootstrap-username: admin
+    bootstrap-password: admin123!
+  api-clients:
+    - name: 集成测试客户端
+      key: test-key-0123456789abcdef
+      purposes: "*"
+
+logging:
+  level:
+    root: WARN
+    com.consentledger: INFO

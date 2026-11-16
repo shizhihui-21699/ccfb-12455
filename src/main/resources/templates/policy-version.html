@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head th:replace="~{fragments :: head('版本详情')}"></head>
+<body>
+<header th:replace="~{fragments :: topbar('policies')}"></header>
+<div th:replace="~{fragments :: flash}"></div>
+
+<main class="page">
+    <div class="page-head">
+        <div>
+            <h1>
+                <span th:text="${policy.name}">隐私政策</span>
+                <span th:text="${version.versionLabel}">v2.0</span>
+            </h1>
+            <div class="sub">
+                <span class="badge ok" th:if="${version.status.name() == 'ACTIVE'}">生效中</span>
+                <span class="badge neutral" th:if="${version.status.name() == 'SUPERSEDED'}">已被取代</span>
+                <span class="badge info" th:if="${version.status.name() == 'DRAFT'}">草稿</span>
+                <span class="badge bad" th:if="${version.status.name() == 'RETIRED'}">已退役</span>
+                <span class="badge warn" th:if="${version.reconsentRequired}">实质性变更 · 需重新同意</span>
+            </div>
+        </div>
+        <a class="btn" th:href="@{/admin/policies}">← 返回列表</a>
+    </div>
+
+    <div class="split">
+        <div class="grid">
+            <section class="card">
+                <h2>用途定义（本版快照）</h2>
+                <table>
+                    <thead>
+                    <tr><th>用途</th><th>合法性基础</th><th>同意模式</th>
+                        <th class="num">留存期</th><th>第三方</th></tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="p : ${purposes}">
+                        <td>
+                            <div th:text="${p.name}">名称</div>
+                            <div class="mono muted" th:text="${p.code}">code</div>
+                            <div class="muted" style="font-size:12px;" th:text="${p.description}"></div>
+                        </td>
+                        <td>
+                            <span class="badge" th:classappend="${p.legalBasis.name() == 'CONSENT'} ? 'info' : 'neutral'"
+                                  th:text="${p.legalBasis.name()}">CONSENT</span>
+                            <div class="badge warn" th:if="${p.sensitiveData}" style="margin-top:4px;">敏感个人信息</div>
+                        </td>
+                        <td th:text="${p.optIn()} ? '需勾选' : '默认允许'">需勾选</td>
+                        <td class="num" th:text="${p.retentionMonths != null} ? ${p.retentionMonths} + ' 月' : '—'">—</td>
+                        <td class="muted" th:text="${p.thirdParties} ?: '—'">—</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section class="card">
+                <h2>政策全文</h2>
+                <pre style="white-space:pre-wrap;font-family:inherit;background:#fafbfd;padding:16px;border-radius:8px;border:1px solid var(--line);margin:0;font-size:13px;"
+                     th:text="${version.documentText} ?: '（未填写）'"></pre>
+            </section>
+        </div>
+
+        <div class="grid">
+            <section class="card tight">
+                <h2>存证信息</h2>
+                <dl class="kv">
+                    <dt>版本号</dt><dd th:text="${version.versionLabel}">v2.0</dd>
+                    <dt>生效时间</dt><dd th:text="${#temporals.format(version.effectiveFrom, 'yyyy-MM-dd HH:mm')}">-</dd>
+                    <dt>发布时间</dt>
+                    <dd th:text="${version.publishedAt != null} ? ${#temporals.format(version.publishedAt, 'yyyy-MM-dd HH:mm')} : '未发布'">-</dd>
+                    <dt>创建人</dt><dd th:text="${version.createdBy}">-</dd>
+                    <dt>内容哈希</dt><dd class="mono" style="font-size:11px;" th:text="${version.contentHash}">hash</dd>
+                    <dt>变更说明</dt><dd th:text="${version.changeNote} ?: '—'">-</dd>
+                    <dt>原文链接</dt>
+                    <dd><a th:if="${version.documentUrl}" th:href="${version.documentUrl}"
+                           th:text="${version.documentUrl}" target="_blank" rel="noopener">link</a>
+                        <span th:unless="${version.documentUrl}">—</span></dd>
+                </dl>
+            </section>
+
+            <section class="card tight">
+                <h2>操作</h2>
+                <div th:if="${version.status.name() == 'DRAFT'}" class="grid">
+                    <div class="notice">发布后本版将成为该政策的生效版本，同政策其它生效版本转为「已被取代」。</div>
+                    <form th:action="@{/admin/versions/{id}/publish(id=${version.id})}" method="post">
+                        <button class="btn primary" type="submit" style="width:100%;">发布并生效</button>
+                    </form>
+                </div>
+                <div th:if="${version.status.name() == 'ACTIVE'}" class="grid">
+                    <div class="notice">当前版本不可编辑。如需调整，请基于它起草新版本。</div>
+                    <a class="btn" style="text-align:center;"
+                       th:href="@{/admin/policies/{pid}/new-version(pid=${policy.id}, from=${version.id})}">起草新版本</a>
+                    <form th:action="@{/admin/versions/{id}/retire(id=${version.id})}" method="post">
+                        <button class="btn danger" type="submit" style="width:100%;">退役本版本</button>
+                    </form>
+                </div>
+                <div th:if="${version.status.name() == 'SUPERSEDED' or version.status.name() == 'RETIRED'}" class="grid">
+                    <div class="notice">历史版本保留用于存证与凭证导出，可据此起草新版本。</div>
+                    <a class="btn" style="text-align:center;"
+                       th:href="@{/admin/policies/{pid}/new-version(pid=${policy.id}, from=${version.id})}">据此起草新版本</a>
+                </div>
+            </section>
+
+            <section class="card tight">
+                <h2>版本历史</h2>
+                <ul class="timeline">
+                    <li th:each="v : ${versions}" th:classappend="${v.id == version.id} ? 'grant'">
+                        <div>
+                            <a th:href="@{/admin/policies/view/{id}(id=${v.id})}" th:text="${v.versionLabel}">v1</a>
+                            <span class="muted" th:text="'· ' + ${v.status.name()}">状态</span>
+                        </div>
+                        <div class="muted" style="font-size:11.5px;"
+                             th:text="${#temporals.format(v.effectiveFrom, 'yyyy-MM-dd')} + ' · ' + ${v.changeNote}">-</div>
+                    </li>
+                </ul>
+            </section>
+        </div>
+    </div>
+</main>
+</body>
+</html>

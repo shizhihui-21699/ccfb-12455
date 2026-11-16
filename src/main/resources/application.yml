@@ -1,0 +1,87 @@
+server:
+  port: 8080
+  compression:
+    enabled: true
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 32
+    accept-count: 1000
+    max-connections: 20000
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: consent-ledger
+  datasource:
+    url: jdbc:h2:file:./data/consent;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+    hikari:
+      maximum-pool-size: 32
+      minimum-idle: 8
+      pool-name: consent-pool
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc.batch_size: 50
+        order_inserts: true
+        order_updates: true
+        query.in_clause_parameter_padding: true
+    show-sql: false
+  h2:
+    console:
+      enabled: false
+  thymeleaf:
+    cache: true
+  mvc:
+    problemdetails:
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  metrics:
+    tags:
+      application: consent-ledger
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+consent:
+  # 决策缓存的保底 TTL；撤回会通过版本号立即失效
+  decision-cache-ttl: 60s
+  decision-cache-max-size: 200000
+  # 跨实例失效轮询间隔
+  revision-poll-interval: 250ms
+  # 接收凭证摘要的 HMAC 密钥（生产环境务必通过环境变量覆盖）
+  receipt-signing-secret: ${CONSENT_RECEIPT_SECRET:dev-only-change-me-2f8b1c9d4e6a}
+  demo-data:
+    enabled: true
+    subjects: 2000
+  admin:
+    bootstrap-username: ${CONSENT_ADMIN_USER:admin}
+    bootstrap-password: ${CONSENT_ADMIN_PASSWORD:admin123!}
+  api-clients:
+    - name: 演示商城
+      key: ${CONSENT_DEMO_API_KEY:demo-key-7f3a9c1e5b2d4f60}
+      purposes: "*"
+
+logging:
+  level:
+    root: INFO
+    com.consentledger: INFO
+    org.hibernate.SQL: WARN
